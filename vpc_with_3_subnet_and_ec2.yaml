@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "aws network creation"
+Parameters:
+  InstanceType:
+    Type: String
+    Default: "t2.micro"
+    Description: Default is t2.micro.
+  ImageId:
+    Type: String
+    Default: "ami-080e1f13689e07408"
+    Description: Default image id
+  KeyName:
+    Type: String
+    Default: "linux_practice"
+  myVpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: Default vpc cidr range
+  subnet1Cidr:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: Default subnet1 cidr range
+  subnet2Cidr:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: Default subnet2 cidr range
+  subnet3Cidr:
+    Type: String
+    Default: 10.0.3.0/24
+    Description: Default subnet3 cidr range
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 
+        Ref: myVpcCidr
+      Tags:
+      - Key: Name
+        Value: myvpc
+      - Key: env
+        Value: dev
+  mySubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 
+        Ref: subnet1Cidr
+      AvailabilityZone: "us-east-1a"
+      Tags:
+      - Key: Name
+        Value: subnet1
+  mySubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 
+        Ref: subnet2Cidr
+      AvailabilityZone: "us-east-1b"
+      Tags:
+      - Key: Name
+        Value: subnet2
+  mySubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: myVPC
+      CidrBlock: 
+        Ref: subnet3Cidr
+      AvailabilityZone: "us-east-1b"
+      Tags:
+      - Key: Name
+        Value: subnet3
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: myigw
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+         Ref: myVPC
+      InternetGatewayId:
+         Ref: myInternetGateway
+  myRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: custom_routeTable
+  myRoute:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId:
+         Ref: myRouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId:
+         Ref: myInternetGateway
+  mySubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: mySubnet1
+      RouteTableId:
+        Ref: myRouteTable
+  mySubnetRouteTableAssociationSubnet:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: mySubnet2
+      RouteTableId:
+        Ref: myRouteTable
+  mySubnetRouteTableAssociationSubnet3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: mySubnet3
+      RouteTableId:
+        Ref: myRouteTable
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to client host
+      VpcId: 
+        Ref: myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+  MyEC2Instance: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: 
+        Ref: ImageId
+      InstanceType: 
+        Ref: InstanceType
+      KeyName: 
+        Ref: KeyName
+      NetworkInterfaces: 
+      - AssociatePublicIpAddress: "true"
+        DeviceIndex: "0"
+        GroupSet: 
+          - Ref: InstanceSecurityGroup
+        SubnetId: 
+          Ref: mySubnet1
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            apt-get update -y
+            apt-get install apache2 -y
+            
+        
+      
+          
+   
+       
